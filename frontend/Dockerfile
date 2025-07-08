@@ -17,7 +17,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Environment variables
-ENV NEXT_PUBLIC_API_URL=http://backend:3001
+ENV NEXT_PUBLIC_API_URL=https://celestial-matrix-challenge-backend.onrender.com
 
 # Build the app
 RUN npm run build
