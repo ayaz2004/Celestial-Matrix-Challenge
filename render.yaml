@@ -1,0 +1,40 @@
+databases:
+  - name: celestial-postgres
+    databaseName: celestial_matrix
+    user: celestial_user
+    region: oregon
+
+services:
+  # Backend Service
+  - type: web
+    name: celestial-backend
+    env: docker
+    region: oregon
+    dockerfilePath: ./Dockerfile.backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: celestial-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: "24h"
+      - key: FRONTEND_URL
+        value: https://celestial-frontend.onrender.com
+    
+  # Frontend Service
+  - type: web
+    name: celestial-frontend
+    env: docker
+    region: oregon
+    dockerfilePath: ./Dockerfile.frontend
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://celestial-backend.onrender.com
+      - key: NODE_ENV
+        value: production
