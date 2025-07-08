@@ -2,7 +2,7 @@
 
 # Base image
 FROM node:18-alpine AS base
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat postgresql-client
 WORKDIR /app
 
 # Backend build stage
@@ -20,10 +20,24 @@ ENV NODE_ENV=production
 COPY backend/package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 COPY --from=backend-builder /app/dist ./dist
+
+# Add database wait script
+COPY <<EOF /app/wait-for-db.sh
+#!/bin/sh
+echo "Waiting for database to be ready..."
+until pg_isready -d "\$DATABASE_URL"; do
+  echo "Database is unavailable - sleeping for 2 seconds"
+  sleep 2
+done
+echo "Database is ready - starting application"
+exec "\$@"
+EOF
+RUN chmod +x /app/wait-for-db.sh
+
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 USER nestjs
 EXPOSE 3001
-CMD ["node", "--enable-source-maps", "dist/main"]
+CMD ["/app/wait-for-db.sh", "node", "dist/main"]
 
 # Frontend build stage
 FROM base AS frontend-deps

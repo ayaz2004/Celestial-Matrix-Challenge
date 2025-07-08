@@ -14,9 +14,14 @@ async function bootstrap() {
   
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   
-  app.enableCors();
+  // Configure CORS for production
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+  });
   
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3001; // Changed to 3001
   await app.listen(port);
+  console.log(`Application is running on port ${port}`);
 }
 bootstrap();

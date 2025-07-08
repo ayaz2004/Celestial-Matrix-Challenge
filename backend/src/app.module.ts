@@ -18,17 +18,34 @@ import { Notification } from './entities/notification.entity';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        entities: [User, Comment, Notification],
-        synchronize: configService.get<string>('NODE_ENV') === 'development',
-        logging: configService.get<string>('NODE_ENV') === 'development',
-      }),
+      useFactory: (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        
+        if (databaseUrl) {
+          // Production: Use DATABASE_URL from Render
+          return {
+            type: 'postgres',
+            url: databaseUrl,
+            entities: [User, Comment, Notification],
+            synchronize: configService.get<string>('NODE_ENV') === 'development',
+            logging: configService.get<string>('NODE_ENV') === 'development',
+            ssl: configService.get<string>('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+          };
+        } else {
+          // Development: Use individual DB variables
+          return {
+            type: 'postgres',
+            host: configService.get<string>('DB_HOST'),
+            port: configService.get<number>('DB_PORT'),
+            username: configService.get<string>('DB_USERNAME'),
+            password: configService.get<string>('DB_PASSWORD'),
+            database: configService.get<string>('DB_NAME'),
+            entities: [User, Comment, Notification],
+            synchronize: configService.get<string>('NODE_ENV') === 'development',
+            logging: configService.get<string>('NODE_ENV') === 'development',
+          };
+        }
+      },
       inject: [ConfigService],
     }),
     AuthModule,
