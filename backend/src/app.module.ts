@@ -27,9 +27,10 @@ import { Notification } from './entities/notification.entity';
             type: 'postgres',
             url: databaseUrl,
             entities: [User, Comment, Notification],
-            synchronize: configService.get<string>('NODE_ENV') === 'development',
+            synchronize: true, // Change this to true
             logging: configService.get<string>('NODE_ENV') === 'development',
             ssl: configService.get<string>('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+            autoLoadEntities: true, // Add this for better entity loading
           };
         } else {
           // Development: Use individual DB variables
@@ -41,8 +42,9 @@ import { Notification } from './entities/notification.entity';
             password: configService.get<string>('DB_PASSWORD'),
             database: configService.get<string>('DB_NAME'),
             entities: [User, Comment, Notification],
-            synchronize: configService.get<string>('NODE_ENV') === 'development',
+            synchronize: true, // Change this to true as well
             logging: configService.get<string>('NODE_ENV') === 'development',
+            autoLoadEntities: true, // Add this for better entity loading
           };
         }
       },
