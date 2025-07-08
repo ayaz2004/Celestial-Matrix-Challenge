@@ -2,15 +2,16 @@ databases:
   - name: celestial-postgres
     databaseName: celestial_matrix
     user: celestial_user
-    region: oregon
+    region: singapore
 
 services:
   # Backend Service
   - type: web
     name: celestial-backend
     env: docker
-    region: oregon
-    dockerfilePath: ./Dockerfile.backend
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerCommand: --target backend-runner
     envVars:
       - key: NODE_ENV
         value: production
@@ -31,7 +32,7 @@ services:
   - type: web
     name: celestial-frontend
     env: docker
-    region: oregon
+    region: singapore
     dockerfilePath: ./Dockerfile.frontend
     envVars:
       - key: NEXT_PUBLIC_API_URL
