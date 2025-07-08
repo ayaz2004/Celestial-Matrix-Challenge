@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile with better PostgreSQL handling
 FROM node:18-alpine AS base
-RUN apk add --no-cache libc6-compat postgresql-client
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Backend build stage
@@ -19,33 +19,10 @@ COPY backend/package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 COPY --from=backend-builder /app/dist ./dist
 
-# Enhanced database wait script
-COPY <<EOF /app/wait-for-db.sh
-#!/bin/sh
-echo "Starting database connection check..."
-max_attempts=30
-attempt=0
-
-while [ $attempt -lt $max_attempts ]; do
-  if pg_isready -d "$DATABASE_URL"; then
-    echo "Database is ready!"
-    exec "$@"
-  fi
-  
-  attempt=$((attempt + 1))
-  echo "Database not ready. Attempt $attempt/$max_attempts. Waiting 5 seconds..."
-  sleep 5
-done
-
-echo "Database connection failed after $max_attempts attempts"
-exit 1
-EOF
-RUN chmod +x /app/wait-for-db.sh
-
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 USER nestjs
 EXPOSE 3001
-CMD ["/app/wait-for-db.sh", "node", "dist/main"]
+CMD ["node", "dist/main"]
 
 # Frontend build stage
 FROM base AS frontend-deps
