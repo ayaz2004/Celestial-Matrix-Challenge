@@ -1,6 +1,4 @@
-# Multi-stage Dockerfile for both backend and frontend
-
-# Base image
+# Multi-stage Dockerfile with better PostgreSQL handling
 FROM node:18-alpine AS base
 RUN apk add --no-cache libc6-compat postgresql-client
 WORKDIR /app
@@ -21,16 +19,26 @@ COPY backend/package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 COPY --from=backend-builder /app/dist ./dist
 
-# Add database wait script
+# Enhanced database wait script
 COPY <<EOF /app/wait-for-db.sh
 #!/bin/sh
-echo "Waiting for database to be ready..."
-until pg_isready -d "\$DATABASE_URL"; do
-  echo "Database is unavailable - sleeping for 2 seconds"
-  sleep 2
+echo "Starting database connection check..."
+max_attempts=30
+attempt=0
+
+while [ $attempt -lt $max_attempts ]; do
+  if pg_isready -d "$DATABASE_URL"; then
+    echo "Database is ready!"
+    exec "$@"
+  fi
+  
+  attempt=$((attempt + 1))
+  echo "Database not ready. Attempt $attempt/$max_attempts. Waiting 5 seconds..."
+  sleep 5
 done
-echo "Database is ready - starting application"
-exec "\$@"
+
+echo "Database connection failed after $max_attempts attempts"
+exit 1
 EOF
 RUN chmod +x /app/wait-for-db.sh
 
