@@ -70,7 +70,7 @@ export class CommentsService {
     const skip = (page - 1) * limit;
 
     const [comments, total] = await this.commentRepository.findAndCount({
-      where: { parentId: undefined }, // Only root comments
+      where: { parentId: IsNull() }, // Only root comments
       relations: [
         'author',
         'replies',

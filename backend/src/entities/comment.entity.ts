@@ -43,7 +43,7 @@ export class Comment {
   @Column({ nullable: true })
   parentId: string;
 
-  @OneToMany(() => Comment, (comment) => comment.parent)
+  @OneToMany(() => Comment, (comment) => comment.parent, { cascade: true })
   replies: Comment[];
 
   @OneToMany(() => Notification, (notification) => notification.comment)
