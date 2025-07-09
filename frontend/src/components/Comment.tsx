@@ -26,7 +26,9 @@ export function Comment({ comment, onUpdate, level = 0 }: CommentProps) {
 
   const isOwner = user?.id === comment.authorId
   
-  const maxLevel = 5 // Maximum nesting level
+  // Frontend limit: 5 levels 
+  const MAX_NESTING_LEVEL = 4 
+  const canReply = level < MAX_NESTING_LEVEL
 
   const handleReply = async () => {
     if (!replyContent.trim()) return
@@ -114,6 +116,9 @@ export function Comment({ comment, onUpdate, level = 0 }: CommentProps) {
                   </span>
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
                     <span>{formatTimeAgo(comment.createdAt)}</span>
+                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                      Level {level}
+                    </span>
                     {comment.updatedAt !== comment.createdAt && (
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                         edited
@@ -187,8 +192,8 @@ export function Comment({ comment, onUpdate, level = 0 }: CommentProps) {
                     </>
                   )}
                   
-                  {/* Reply button - only for other users' comments when not deleted */}
-                  {!comment.isDeleted && !isOwner && level < maxLevel && (
+                  {/* Reply button - only for other users' comments when not deleted and within nesting limit */}
+                  {!comment.isDeleted && !isOwner && canReply && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -199,6 +204,13 @@ export function Comment({ comment, onUpdate, level = 0 }: CommentProps) {
                       <MessageCircle className="h-4 w-4 mr-1" />
                       <span className="text-xs font-medium">Reply</span>
                     </Button>
+                  )}
+                  
+                  {/* Show max nesting message */}
+                  {!comment.isDeleted && !isOwner && !canReply && (
+                    <div className="text-xs text-gray-500 italic">
+                      Maximum nesting level reached
+                    </div>
                   )}
                 </div>
               )}
@@ -252,14 +264,14 @@ export function Comment({ comment, onUpdate, level = 0 }: CommentProps) {
               )}
 
               {/* Reply Form */}
-              {isReplying && (
+              {isReplying && canReply && (
                 <div className="space-y-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 mt-4">
                   <div className="flex items-center space-x-2 mb-2">
                     <div className="h-6 w-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                       <MessageCircle className="h-3 w-3 text-white" />
                     </div>
                     <span className="text-sm font-medium text-gray-700">
-                      Replying to {comment.author.username}
+                      Replying to {comment.author.username} (Level {level + 1})
                     </span>
                   </div>
                   <Textarea
@@ -300,7 +312,7 @@ export function Comment({ comment, onUpdate, level = 0 }: CommentProps) {
         </CardContent>
       </Card>
 
-      {/* Nested Comments */}
+      {/* Nested Comments - Render all levels but frontend limits interaction */}
       {comment.replies && comment.replies.length > 0 && (
         <div className="space-y-4">
           {comment.replies.map((child) => (

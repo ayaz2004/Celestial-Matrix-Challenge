@@ -6,7 +6,7 @@ A modern, scalable comment system built with Next.js frontend and NestJS backend
 
 ### Core Features
 - **Secure Authentication**: JWT-based authentication with registration/login
-- **Nested Comments**: Multi-level comment threads (up to 5 levels deep)
+- **Unlimited Nested Comments**: Backend supports infinite nesting depth, frontend displays up to 5 levels
 - **Real-time Notifications**: Get notified when someone replies to your comments
 - **Time-limited Actions**: 15-minute window to edit/delete/restore comments
 - **Modern UI**: Beautiful, responsive design with Tailwind CSS
@@ -18,6 +18,34 @@ A modern, scalable comment system built with Next.js frontend and NestJS backend
 - **Database**: PostgreSQL with proper relationships and indexing
 - **Security**: Bcrypt password hashing, JWT tokens, input validation
 - **Scalability**: Modular architecture, efficient queries, Docker deployment
+
+## 🌳 Comment Nesting Architecture
+
+### Backend (Unlimited Nesting)
+- **Recursive Loading**: Comments are loaded recursively with no depth limit
+- **Efficient Queries**: Uses recursive SQL queries for optimal performance
+- **Flexible Data Structure**: Supports infinite comment threading
+
+### Frontend (5-Level Display Limit)
+- **Level 0**: Root comments
+- **Level 1**: Direct replies to root comments
+- **Level 2**: Replies to level 1 comments
+- **Level 3**: Replies to level 2 comments
+- **Level 4**: Replies to level 3 comments (maximum displayed)
+
+```
+Root Comment (Level 0)
+├── Reply 1 (Level 1)
+│   ├── Reply to Reply 1 (Level 2)
+│   │   ├── Reply to Reply to Reply 1 (Level 3)
+│   │   │   └── Reply to Reply to Reply to Reply 1 (Level 4) [Max Display]
+│   │   └── Reply to Reply to Reply 2 (Level 3)
+│   └── Reply to Reply 2 (Level 2)
+└── Reply 2 (Level 1)
+    └── Reply to Reply 3 (Level 2)
+```
+
+**Note**: While the backend can handle unlimited nesting, the frontend limits display to 5 levels for better user experience and readability.
 
 ## 🚀 Quick Start
 
@@ -37,7 +65,7 @@ A modern, scalable comment system built with Next.js frontend and NestJS backend
 2. **Configure environment variables**
    ```bash
    # Copy and edit the environment file
-   cp .env
+   cp .env.example .env
    # Edit .env with your preferred values
    ```
 
@@ -72,7 +100,7 @@ A modern, scalable comment system built with Next.js frontend and NestJS backend
 
 4. **Configure environment**
    ```bash
-   cp .env
+   cp .env.example .env
    ```
 
 5. **Start the backend**
@@ -110,7 +138,7 @@ Celestial Matrix Challenge/
 ├── backend/                 # NestJS Backend API
 │   ├── src/
 │   │   ├── auth/           # Authentication module
-│   │   ├── comments/       # Comments module
+│   │   ├── comments/       # Comments module (recursive nesting)
 │   │   ├── notifications/  # Notifications module
 │   │   ├── entities/       # Database entities
 │   │   └── decorators/     # Custom decorators
@@ -119,7 +147,7 @@ Celestial Matrix Challenge/
 ├── frontend/               # Next.js Frontend
 │   ├── src/
 │   │   ├── app/           # App Router pages
-│   │   ├── components/    # React components
+│   │   ├── components/    # React components (5-level limit)
 │   │   ├── contexts/      # React contexts
 │   │   ├── services/      # API services
 │   │   ├── types/         # TypeScript types
@@ -163,10 +191,11 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 - `POST /auth/login` - Login user
 - `GET /auth/profile` - Get user profile
 
-### Comments
-- `GET /comments` - Get all comments (nested)
-- `POST /comments` - Create new comment
-- `GET /comments/:id` - Get specific comment
+### Comments (Unlimited Nesting)
+- `GET /comments` - Get all comments with recursive nesting
+- `POST /comments` - Create new comment (supports any nesting level)
+- `GET /comments/:id` - Get specific comment with all nested replies
+- `GET /comments/:id/replies` - Get all replies for a comment recursively
 - `PATCH /comments/:id` - Update comment (15min limit)
 - `DELETE /comments/:id` - Delete comment (15min limit)
 - `POST /comments/:id/restore` - Restore deleted comment (15min limit)
@@ -179,72 +208,65 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 ### Health Check
 - `GET /health` - Service health status
 
-## 🧪 Testing the API
+## 🧪 Testing Nested Comments
 
-### Using Postman
+### Create a Deep Comment Thread
 
-1. **Register a new user**
-   ```bash
-   POST http://localhost:3001/auth/register
-   Content-Type: application/json
-   
-   {
-     \"username\": \"testuser\",
-     \"email\": \"test@example.com\",
-     \"password\": \"password123\"
-   }
-   ```
-
-2. **Login and get token**
-   ```bash
-   POST http://localhost:3001/auth/login
-   Content-Type: application/json
-   
-   {
-     \"email\": \"test@example.com\",
-     \"password\": \"password123\"
-   }
-   ```
-
-3. **Create a comment (with token)**
+1. **Create a root comment**
    ```bash
    POST http://localhost:3001/comments
-   Content-Type: application/json
-   Authorization: Bearer <your-jwt-token>
-   
    {
-     \"content\": \"This is my first comment!\"
+     "content": "This is a root comment (Level 0)"
    }
    ```
 
-4. **Reply to a comment**
+2. **Reply to the root comment**
    ```bash
    POST http://localhost:3001/comments
-   Content-Type: application/json
-   Authorization: Bearer <your-jwt-token>
-   
    {
-     \"content\": \"This is a reply!\",
-     \"parentId\": \"<parent-comment-id>\"
+     "content": "This is a reply to root (Level 1)",
+     "parentId": "<root-comment-id>"
    }
    ```
+
+3. **Reply to the reply**
+   ```bash
+   POST http://localhost:3001/comments
+   {
+     "content": "This is a reply to reply (Level 2)",
+     "parentId": "<level-1-comment-id>"
+   }
+   ```
+
+4. **Continue nesting** - Backend will handle unlimited levels, frontend will display up to 5 levels
+
+### Testing Frontend Limitations
+
+1. **Navigate to the comments page**
+2. **Create nested comments** up to 5 levels
+3. **Observe that Reply button disappears** after level 4
+4. **Backend data** will still contain all nested levels
 
 ## 🔐 Security Features
 
 - **Password Hashing**: Bcrypt with salt rounds
 - **JWT Authentication**: Secure token-based auth
 - **Input Validation**: Class-validator for all inputs
-- **SQL Injection Prevention**: TypeORM query builder
+- **SQL Injection Prevention**: TypeORM query builder with recursive queries
 - **CORS Configuration**: Proper cross-origin setup
 - **Environment Variables**: Sensitive data protection
 
 ## 🎨 Frontend Features
 
-- **Modern UI**: Clean, responsive design with Tailwind CSS
+### Comment Threading
+- **Visual Hierarchy**: Indented display with level indicators
+- **Level Badges**: Shows current nesting level (0-4)
+- **Maximum Nesting Warning**: Displays when max depth is reached
+- **Smooth Transitions**: Animated expansions and collapses
+
+### User Experience
 - **Real-time Updates**: Automatic refresh of comments and notifications
-- **Nested Threading**: Visual hierarchy for comment threads
 - **Interactive Actions**: Edit, delete, restore with time limits
-- **Notification Center**: Dedicated notifications page
 - **Loading States**: Smooth user experience with loading indicators
 - **Error Handling**: Comprehensive error handling and user feedback
 
@@ -257,22 +279,26 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 - password (Hashed)
 - timestamps
 
-### Comments Table
+### Comments Table (Recursive Structure)
 - id (UUID, Primary Key)
-- content
-- authorId (Foreign Key)
-- parentId (Self-referencing Foreign Key)
-- deletedAt (Soft delete)
-- timestamps
+- content (Text)
+- authorId (Foreign Key → Users)
+- parentId (Foreign Key → Comments, Self-referencing)
+- isDeleted (Boolean, default: false)
+- deletedAt (Timestamp, nullable)
+- isEdited (Boolean, default: false)
+- createdAt (Timestamp)
+- updatedAt (Timestamp)
 
 ### Notifications Table
 - id (UUID, Primary Key)
-- userId (Foreign Key)
-- commentId (Foreign Key)
-- type ('reply')
-- message
-- isRead (Boolean)
-- timestamps
+- userId (Foreign Key → Users)
+- commentId (Foreign Key → Comments)
+- type (Enum: 'reply')
+- message (Text)
+- isRead (Boolean, default: false)
+- createdAt (Timestamp)
+- updatedAt (Timestamp)
 
 ## 🚀 Deployment
 
@@ -291,43 +317,41 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
    docker-compose -f docker-compose.yml up -d --build
    ```
 
-3. **Set up reverse proxy (Nginx example)**
-   ```nginx
-   server {
-       listen 80;
-       server_name your-domain.com;
-       
-       location / {
-           proxy_pass http://localhost:3000;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-       }
-       
-       location /api {
-           proxy_pass http://localhost:3001;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-       }
-   }
-   ```
+3. **Monitor performance** - Recursive queries are optimized but monitor for very deep nesting
 
-## 🤝 Contributing
+## 📈 Performance Considerations
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Backend Optimization
+- **Efficient Recursive Queries**: Uses optimized SQL for loading nested comments
+- **Lazy Loading**: Comments are loaded on-demand
+- **Database Indexing**: Proper indexes on parentId and authorId
+- **Connection Pooling**: PostgreSQL connection pooling for scalability
 
-## 📝 License
+### Frontend Optimization
+- **Level Limiting**: Prevents UI performance issues with deep nesting
+- **Virtual Scrolling**: For large comment lists
+- **Memoization**: React.memo for comment components
+- **Debounced Updates**: Efficient re-rendering
 
-This project is licensed under the MIT License. See LICENSE file for details.
+
 
 ## 🆘 Troubleshooting
 
 ### Common Issues
 
-1. **Database Connection Issues**
+1. **Deep Nesting Performance**
+   ```bash
+   # Monitor recursive query performance
+   # Enable query logging in development
+   ```
+
+2. **Frontend Rendering Issues**
+   ```bash
+   # Check browser console for level warnings
+   # Ensure comment component memoization
+   ```
+
+3. **Database Connection Issues**
    ```bash
    # Check if PostgreSQL is running
    docker-compose ps postgres
@@ -335,32 +359,3 @@ This project is licensed under the MIT License. See LICENSE file for details.
    # View database logs
    docker-compose logs postgres
    ```
-
-2. **Frontend API Connection Issues**
-   ```bash
-   # Ensure backend is running
-   curl http://localhost:3001/health
-   
-   # Check environment variables
-   echo $NEXT_PUBLIC_API_URL
-   ```
-
-3. **Docker Build Issues**
-   ```bash
-   # Clean Docker cache
-   docker system prune -a
-   
-   # Rebuild without cache
-   docker-compose build --no-cache
-   ```
-
-### Support
-
-For support and questions:
-- Check the GitHub Issues page
-- Review the API documentation
-- Examine the console logs for error details
-
----
-
-**Built with ❤️ using Next.js, NestJS, and modern web technologies.**

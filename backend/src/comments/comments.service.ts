@@ -59,7 +59,7 @@ export class CommentsService {
 
     return this.commentRepository.findOne({
       where: { id: savedComment.id },
-      relations: ['author', 'parent', 'replies', 'replies.author'],
+      relations: ['author', 'parent'],
     }) as Promise<Comment>;
   }
 
@@ -71,20 +71,22 @@ export class CommentsService {
 
     const [comments, total] = await this.commentRepository.findAndCount({
       where: { parentId: IsNull() }, // Only root comments
-      relations: [
-        'author',
-        'replies',
-        'replies.author',
-        'replies.replies',
-        'replies.replies.author',
-      ],
+      relations: ['author'],
       skip,
       take: limit,
       order: { createdAt: 'DESC' },
     });
 
+    // Load replies recursively with unlimited nesting
+    const commentsWithReplies = await Promise.all(
+      comments.map(async (comment) => {
+        comment.replies = await this.loadRepliesRecursively(comment.id);
+        return comment;
+      })
+    );
+
     // Filter out deleted comments that are past the restore window
-    const filteredComments = comments.filter((comment) => {
+    const filteredComments = commentsWithReplies.filter((comment) => {
       if (!comment.isDeleted) return true;
       return comment.canRestore;
     });
@@ -96,15 +98,36 @@ export class CommentsService {
     };
   }
 
+  /**
+   * Recursively load all replies for a comment (unlimited nesting)
+   */
+  private async loadRepliesRecursively(parentId: string): Promise<Comment[]> {
+    const replies = await this.commentRepository.find({
+      where: { parentId },
+      relations: ['author'],
+      order: { createdAt: 'ASC' },
+    });
+
+    // Load nested replies for each reply
+    for (const reply of replies) {
+      reply.replies = await this.loadRepliesRecursively(reply.id);
+    }
+
+    return replies;
+  }
+
   async getCommentById(id: string): Promise<Comment> {
     const comment = await this.commentRepository.findOne({
       where: { id },
-      relations: ['author', 'parent', 'replies', 'replies.author'],
+      relations: ['author', 'parent'],
     });
 
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
+
+    // Load replies recursively
+    comment.replies = await this.loadRepliesRecursively(comment.id);
 
     return comment;
   }
@@ -114,7 +137,14 @@ export class CommentsService {
     updateCommentDto: UpdateCommentDto,
     user: User,
   ): Promise<Comment> {
-    const comment = await this.getCommentById(id);
+    const comment = await this.commentRepository.findOne({
+      where: { id },
+      relations: ['author'],
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
 
     if (comment.author.id !== user.id) {
       throw new ForbiddenException('You can only edit your own comments');
@@ -135,7 +165,14 @@ export class CommentsService {
   }
 
   async deleteComment(id: string, user: User): Promise<Comment> {
-    const comment = await this.getCommentById(id);
+    const comment = await this.commentRepository.findOne({
+      where: { id },
+      relations: ['author'],
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
 
     if (comment.author.id !== user.id) {
       throw new ForbiddenException('You can only delete your own comments');
@@ -152,7 +189,14 @@ export class CommentsService {
   }
 
   async restoreComment(id: string, user: User): Promise<Comment> {
-    const comment = await this.getCommentById(id);
+    const comment = await this.commentRepository.findOne({
+      where: { id },
+      relations: ['author'],
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
 
     if (comment.author.id !== user.id) {
       throw new ForbiddenException('You can only restore your own comments');
@@ -173,12 +217,15 @@ export class CommentsService {
   }
 
   async getReplies(parentId: string): Promise<Comment[]> {
-    const parent = await this.getCommentById(parentId);
-
-    return this.commentRepository.find({
-      where: { parent: { id: parentId } },
-      relations: ['author', 'replies', 'replies.author'],
-      order: { createdAt: 'ASC' },
+    const parent = await this.commentRepository.findOne({
+      where: { id: parentId },
+      relations: ['author'],
     });
+
+    if (!parent) {
+      throw new NotFoundException('Parent comment not found');
+    }
+
+    return this.loadRepliesRecursively(parentId);
   }
 }
